@@ -45,6 +45,7 @@ from dataset_and_utils import TokenEmbeddingsHandler
 MODEL_NAME = "SG161222/RealVisXL_V2.0"
 MODEL_CACHE = "model-cache"
 
+
 class KarrasDPM:
     def from_config(config):
         return DPMSolverMultistepScheduler.from_config(config, use_karras_sigmas=True)
@@ -101,7 +102,8 @@ class Predictor(BasePredictor):
 
             unet = pipe.unet
 
-            tensors = load_file(os.path.join(local_weights_cache, "lora.safetensors"))
+            tensors = load_file(os.path.join(
+                local_weights_cache, "lora.safetensors"))
 
             unet = pipe.unet
             unet_lora_attn_procs = {}
@@ -142,18 +144,19 @@ class Predictor(BasePredictor):
 
         # load text
         handler = TokenEmbeddingsHandler(
-            [pipe.text_encoder, pipe.text_encoder_2], [pipe.tokenizer, pipe.tokenizer_2]
+            [pipe.text_encoder, pipe.text_encoder_2], [
+                pipe.tokenizer, pipe.tokenizer_2]
         )
-        handler.load_embeddings(os.path.join(local_weights_cache, "embeddings.pti"))
+        handler.load_embeddings(os.path.join(
+            local_weights_cache, "embeddings.pti"))
 
         # load params
         with open(os.path.join(local_weights_cache, "special_params.json"), "r") as f:
             params = json.load(f)
         self.token_map = params
 
-        self.tuned_model = True            
-            
-                        
+        self.tuned_model = True
+
     def setup(self, weights: Optional[Path] = None):
         """Load the model into memory to make running multiple predictions efficient"""
         start = time.time()
@@ -173,7 +176,7 @@ class Predictor(BasePredictor):
         # Resize the image if needed
         if new_width != width or new_height != height:
             img = img.resize((new_width, new_height), Image.ANTIALIAS)
-        
+
         # Convert the image to RGB mode
         img = img.convert("RGB")
         return img
@@ -236,7 +239,8 @@ class Predictor(BasePredictor):
         ),
         refine: str = Input(
             description="Which refine style to use",
-            choices=["no_refiner", "expert_ensemble_refiner", "base_image_refiner"],
+            choices=["no_refiner", "expert_ensemble_refiner",
+                     "base_image_refiner"],
             default="no_refiner",
         ),
         high_noise_frac: float = Input(
@@ -267,7 +271,7 @@ class Predictor(BasePredictor):
             )
 
         lora = True
-        if lora == True :
+        if lora == True:
             self.is_lora = True
             print("LORA")
             print("Loading ssd txt2img pipeline...")
@@ -281,44 +285,44 @@ class Predictor(BasePredictor):
             self.txt2img_pipe.to("cuda")
             self.is_lora = True
 
-            # print("Loading SDXL img2img pipeline...")
-            # self.img2img_pipe = StableDiffusionXLImg2ImgPipeline(
-            #     vae=self.txt2img_pipe.vae,
-            #     text_encoder=self.txt2img_pipe.text_encoder,
-            #     text_encoder_2=self.txt2img_pipe.text_encoder_2,
-            #     tokenizer=self.txt2img_pipe.tokenizer,
-            #     tokenizer_2=self.txt2img_pipe.tokenizer_2,
-            #     unet=self.txt2img_pipe.unet,
-            #     scheduler=self.txt2img_pipe.scheduler,
-            # )
-            # self.img2img_pipe.to("cuda")
+            print("Loading SDXL img2img pipeline...")
+            self.img2img_pipe = StableDiffusionXLImg2ImgPipeline(
+                vae=self.txt2img_pipe.vae,
+                text_encoder=self.txt2img_pipe.text_encoder,
+                text_encoder_2=self.txt2img_pipe.text_encoder_2,
+                tokenizer=self.txt2img_pipe.tokenizer,
+                tokenizer_2=self.txt2img_pipe.tokenizer_2,
+                unet=self.txt2img_pipe.unet,
+                scheduler=self.txt2img_pipe.scheduler,
+            )
+            self.img2img_pipe.to("cuda")
 
-            # print("Loading SDXL inpaint pipeline...")
-            # self.inpaint_pipe = StableDiffusionXLInpaintPipeline(
-            #     vae=self.txt2img_pipe.vae,
-            #     text_encoder=self.txt2img_pipe.text_encoder,
-            #     text_encoder_2=self.txt2img_pipe.text_encoder_2,
-            #     tokenizer=self.txt2img_pipe.tokenizer,
-            #     tokenizer_2=self.txt2img_pipe.tokenizer_2,
-            #     unet=self.txt2img_pipe.unet,
-            #     scheduler=self.txt2img_pipe.scheduler,
-            # )
-            # self.inpaint_pipe.to("cuda")
+            print("Loading SDXL inpaint pipeline...")
+            self.inpaint_pipe = StableDiffusionXLInpaintPipeline(
+                vae=self.txt2img_pipe.vae,
+                text_encoder=self.txt2img_pipe.text_encoder,
+                text_encoder_2=self.txt2img_pipe.text_encoder_2,
+                tokenizer=self.txt2img_pipe.tokenizer,
+                tokenizer_2=self.txt2img_pipe.tokenizer_2,
+                unet=self.txt2img_pipe.unet,
+                scheduler=self.txt2img_pipe.scheduler,
+            )
+            self.inpaint_pipe.to("cuda")
 
-            # print("Loading SDXL refiner pipeline...")
+            print("Loading SDXL refiner pipeline...")
 
-            # print("Loading refiner pipeline...")
-            # self.refiner = DiffusionPipeline.from_pretrained(
-            #     "refiner-cache",
-            #     text_encoder_2=self.txt2img_pipe.text_encoder_2,
-            #     vae=self.txt2img_pipe.vae,
-            #     torch_dtype=torch.float16,
-            #     use_safetensors=True,
-            #     variant="fp16",
-            # )
-            # self.refiner.to("cuda")
+            print("Loading refiner pipeline...")
+            self.refiner = DiffusionPipeline.from_pretrained(
+                "refiner-cache",
+                text_encoder_2=self.txt2img_pipe.text_encoder_2,
+                vae=self.txt2img_pipe.vae,
+                torch_dtype=torch.float16,
+                use_safetensors=True,
+                variant="fp16",
+            )
+            self.refiner.to("cuda")
 
-        else :
+        else:
             print("Loading sdxl txt2img pipeline...")
             self.txt2img_pipe = DiffusionPipeline.from_pretrained(
                 MODEL_CACHE,
@@ -364,8 +368,6 @@ class Predictor(BasePredictor):
             # )
             # self.refiner.to("cuda")
 
-            
-            
         """Run a single prediction on the model"""
         if seed is None:
             seed = int.from_bytes(os.urandom(2), "big")
@@ -413,7 +415,8 @@ class Predictor(BasePredictor):
             watermark_cache = pipe.watermark
             pipe.watermark = None
 
-        pipe.scheduler = SCHEDULERS[scheduler].from_config(pipe.scheduler.config)
+        pipe.scheduler = SCHEDULERS[scheduler].from_config(
+            pipe.scheduler.config)
         generator = torch.Generator("cuda").manual_seed(seed)
 
         common_args = {
